@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<UserSecretsId>aspnet-IdentityServer.Api-7852ee8a-471e-40de-8cc8-f878c9634258</UserSecretsId>
+		<DockerDefaultTargetOS>Windows</DockerDefaultTargetOS>
+		<DockerfileContext>.</DockerfileContext>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\IdentityServer.Application\IdentityServer.Application.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Serilog.AspNetCore" Version="8.0.3" />
+		<PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0" />
+		<PackageReference Include="System.Linq" Version="4.3.0" />
+		<PackageReference Include="System.Linq.Async" Version="6.0.1" />
+	</ItemGroup>
+</Project>
