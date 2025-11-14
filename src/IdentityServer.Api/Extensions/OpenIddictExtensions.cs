@@ -45,6 +45,8 @@ public static class OpenIddictExtensions
         builder.AllowAuthorizationCodeFlow()
                .RequireProofKeyForCodeExchange();
 
+        builder.AllowPasswordFlow();
+
         builder.SetAuthorizationEndpointUris("api/identity/authorize")
                .SetTokenEndpointUris("api/identity/token");
 
