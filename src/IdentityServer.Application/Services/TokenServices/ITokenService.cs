@@ -7,6 +7,5 @@ namespace IdentityServer.Application.Services.TokenServices;
 
 public interface ITokenService
 {
-    ClaimsPrincipal CreateClaimsPrincipalAsync(OpenIddictRequest request, ClaimsPrincipal userPrincipal);
     Task<IActionResult> HandleTokenRequestAsync(OpenIddictRequest request, HttpContext httpContext);
 }

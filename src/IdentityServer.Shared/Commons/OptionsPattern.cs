@@ -32,4 +32,13 @@ public class OptionsPattern
         [Required(AllowEmptyStrings = false)]
         public string Host { get; set; } = string.Empty;
     }
+
+    public class AuthOptions
+    {
+        [Required(AllowEmptyStrings = false)]
+        public string UserServiceEndpoint { get; set; } = string.Empty;
+
+        [Required(AllowEmptyStrings = false)]
+        public string ServerIssuer { get; set; } = string.Empty;
+    }
 }

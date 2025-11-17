@@ -1,3 +1,5 @@
+using gRPCServer.User.Protos;
+using IdentityServer.Application.Helpers;
 using IdentityServer.Persistence.Entities;
 using IdentityServer.Shared.Commons;
 using Microsoft.AspNetCore.Authentication;
@@ -8,6 +10,7 @@ using Microsoft.Extensions.Options;
 using OpenIddict.Abstractions;
 using OpenIddict.Server.AspNetCore;
 using System.Security.Claims;
+using static gRPCServer.User.Protos.UserProtoService;
 using static IdentityServer.Shared.Commons.Constants;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
@@ -17,23 +20,18 @@ public class TokenService : ITokenService
 {
     private readonly OptionsPattern.OpenIddict _options;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly UserProtoServiceClient _userProtoServiceClient;
+    private readonly ClaimsPrincipalFactory _claimsPrincipalFactory;
 
     public TokenService(IOptions<OptionsPattern.OpenIddict> options,
-        UserManager<ApplicationUser> userManager)
+        UserManager<ApplicationUser> userManager,
+        UserProtoServiceClient userProtoServiceClient,
+        ClaimsPrincipalFactory claimsPrincipalFactory)
     {
         _options = options.Value;
         _userManager = userManager;
-    }
-
-    public ClaimsPrincipal CreateClaimsPrincipalAsync(OpenIddictRequest request, ClaimsPrincipal? principal)
-    {
-        var claimsIdentity = new ClaimsIdentity(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
-        claimsIdentity.SetClaim(Claims.Subject, request.ClientId);
-        claimsIdentity.SetClaim(Claims.Audience, _options.Issuer);
-        claimsIdentity.SetClaim(ClaimTypes.Email, principal?.FindFirst(Claims.Name)?.Value);
-        claimsIdentity.SetDestinations(GetDestinations);
-
-        return new ClaimsPrincipal(claimsIdentity);
+        _userProtoServiceClient = userProtoServiceClient;
+        _claimsPrincipalFactory = claimsPrincipalFactory;
     }
 
     public async Task<IActionResult> HandleTokenRequestAsync(OpenIddictRequest request, HttpContext context)
@@ -42,18 +40,12 @@ public class TokenService : ITokenService
 
         if (request.IsAuthorizationCodeGrantType())
         {
-            var principal = CreateClaimsPrincipalAsync(request, result.Principal);
+            var principal = CreateClaimsPrincipalAuthenticateFlow(request, result.Principal);
             return new Microsoft.AspNetCore.Mvc.SignInResult(authenticationScheme: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, principal);
         }
         else if (request.IsPasswordGrantType())
         {
-            var user = await ValidateUserAsync(request.Username!, request.Password!);
-            if (user == null)
-            {
-                return new Microsoft.AspNetCore.Mvc.ForbidResult(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
-            }
-
-            var principal = await CreateClaimsPrincipalFromUser(request, user);
+            var principal = await CreateClaimsPrincipalPasswordFlow(request);
             return new Microsoft.AspNetCore.Mvc.SignInResult(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, principal);
         }
 
@@ -64,53 +56,27 @@ public class TokenService : ITokenService
         });
     }
 
-
-    private async Task<ClaimsPrincipal> CreateClaimsPrincipalFromUser(OpenIddictRequest request, ApplicationUser user)
+    private ClaimsPrincipal CreateClaimsPrincipalAuthenticateFlow(OpenIddictRequest request, ClaimsPrincipal? principal)
     {
-        var identity = new ClaimsIdentity(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
-        var roleUser = await _userManager.GetRolesAsync(user);
-        if (roleUser.Any())
-        {
-            identity.SetClaim(ClaimTypes.Role, string.Join(", ", roleUser));
-        }
+        return _claimsPrincipalFactory.Create(
+            subject: request.ClientId!,
+            email: principal?.FindFirst(Claims.Name)?.Value
+        );
+    }
 
-        identity.SetClaim(Claims.Subject, user.Id);
-        identity.SetClaim(ClaimTypes.Email, user.Email);
-        identity.SetClaim(Claims.Audience, _options.Issuer);
-
-        identity.SetDestinations(claim =>
+    private async Task<ClaimsPrincipal> CreateClaimsPrincipalPasswordFlow(OpenIddictRequest request)
+    {
+        var loginResponse = await _userProtoServiceClient.LoginAsync(new LoginRequest
         {
-            switch (claim.Type)
-            {
-                case Claims.Subject:
-                case ClaimTypes.Email:
-                    return new[] { Destinations.AccessToken, Destinations.IdentityToken };
-                default:
-                    return new[] { Destinations.AccessToken };
-            }
+            Username = request.Username,
+            Password = request.Password
         });
 
-        return new ClaimsPrincipal(identity);
+        return _claimsPrincipalFactory.Create(
+            subject: request.ClientId!,
+            email: request.Username,
+            role: loginResponse.UserRole,
+            permission: loginResponse.UserPermission
+        );
     }
-
-    private async Task<ApplicationUser?> ValidateUserAsync(string username, string password)
-    {
-        var user = await _userManager.FindByNameAsync(username);
-        if (user == null) return null;
-
-        if (!await _userManager.CheckPasswordAsync(user, password))
-            return null;
-
-        if (!await _userManager.IsEmailConfirmedAsync(user))
-            return null;
-
-        return user;
-    }
-
-    private static IEnumerable<string> GetDestinations(Claim claim) =>
-        claim.Type switch
-        {
-            Claims.Name or Claims.Subject => new[] { Destinations.AccessToken, Destinations.IdentityToken },
-            _ => new[] { Destinations.AccessToken },
-        };
 }

@@ -1,4 +1,8 @@
-﻿using Microsoft.OpenApi.Models;
+﻿using IdentityServer.Application.Helpers;
+using Microsoft.AspNetCore.Authentication.OAuth;
+using Microsoft.OpenApi.Models;
+using static gRPCServer.User.Protos.UserProtoService;
+using static IdentityServer.Shared.Commons.OptionsPattern;
 
 namespace IdentityServer.Api.Extensions;
 
@@ -17,5 +21,14 @@ public static class ServiceCollectionExtensions
                 .BindConfiguration(typeof(T).Name)
                 .ValidateDataAnnotations()
                 .ValidateOnStart();
+    }
+
+    public static IServiceCollection AddGrpcConfiguration(this IServiceCollection services, IConfiguration configuration)
+    {
+        var authOptions = configuration.GetSection(nameof(AuthOptions)).Get<AuthOptions>()!;
+        services.AddSingleton(new ClaimsPrincipalFactory(authOptions.ServerIssuer));
+        services.AddGrpcClient<UserProtoServiceClient>(s => s.Address = new Uri(authOptions.UserServiceEndpoint));
+
+        return services;
     }
 }

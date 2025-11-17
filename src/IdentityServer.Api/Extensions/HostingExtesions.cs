@@ -39,9 +39,11 @@ public static class HostingExtesions
             });
         });
 
+        builder.Services.AddGrpcConfiguration(builder.Configuration);
         builder.Services.AddScoped<IAuthorizeService, AuthorizeService>();
         builder.Services.AddScoped<ITokenService, TokenService>();
         builder.Services.AddTransient<IEmailSender, SendMailService>();
+        builder.Services.ConfigureValidatedOptions<OptionsPattern.AuthOptions>();
         builder.Services.ConfigureValidatedOptions<OptionsPattern.OpenIddict>();
         builder.Services.ConfigureValidatedOptions<OptionsPattern.MailSettings>();
         builder.Services.AddCustomDbContext(builder);

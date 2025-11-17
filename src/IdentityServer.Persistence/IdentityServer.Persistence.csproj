@@ -7,6 +7,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+		<PackageReference Include="Grpc.AspNetCore" Version="2.71.0" />
 		<PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="8.0.7" />
 		<PackageReference Include="Microsoft.AspNetCore.Identity.UI" Version="8.0.20" />
 		<PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.20" />
@@ -21,6 +22,12 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\IdentityServer.Shared\IdentityServer.Shared.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Protobuf Include="Protos\users.proto" GrpcServices="Client">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </Protobuf>
 	</ItemGroup>
 
 </Project>
